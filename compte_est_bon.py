@@ -6,35 +6,105 @@ trouver. Par exemple, si les cartons tirés sont 3 5 7 9 25 50 et que le nombre 
 859, il devra être appelé ainsi : echo 3 5 7 9 25 50 859  | ./compteestbon.py 
 """
 
-from recherche_compte_est_bon import *
-import sys
-import time
+from TAD.piles_listes_python import Pile
+from TAD.files_listes_python import File
+from notation_polonaise_inverse import eval_NPI_liste
 
-def lire_stdin():
-    """Lit l'entrée standard en invitant l'utilisateur à l'aide d'un message si le flux d'entrée n'est pas redirigé"""
-    if sys.stdin.isatty():
-        sys.stderr.write("Saisissez du texte (Ctrl+D pour terminer) :\n")
-    return sys.stdin.read()
+def parcours_DFS(cartons, cible):
 
-if __name__ == "__main__":
-    cartons_nombre = lire_stdin()
-    *cartons,nombre = map(int, cartons_nombre.split())
-    print(f"Recherche de {nombre} avec {cartons}")
+    pile = Pile()
+    nb_noeuds = 0
+    meilleure_expression = None
     
-    debut = time.perf_counter()
-    parcours_DFS(cartons, nombre)
-    fin = time.perf_counter()
-    print(f"DFS : {fin - debut:.6f} s")
 
-    debut = time.perf_counter()
-    parcours_DFS_recursif(cartons, nombre)
-    fin = time.perf_counter()
-    print(f"DFS récursif : {fin - debut:.6f} s")
+    for i, c in enumerate(cartons):
+        restants = cartons[:i] + cartons[i+1:]
+        pile.empiler(([c], restants))
+        
+    while not pile.est_vide():
+        expr, restants = pile.depiler()
+        nb_noeuds += 1
+        
+        valide, resultat = eval_NPI_liste(expr)
+        
+        if not valide:
+            continue
+            
+        if resultat == cible:
+            meilleure_expression = expr
+            print(f"Solution trouvée (DFS) : {' '.join(str(x) for x in expr)} = {resultat}")
+            break 
 
-    debut = time.perf_counter()
-    parcours_BFS(cartons, nombre)
-    fin = time.perf_counter()
-    print(f"BFS : {fin - debut:.6f} s")
+        if len(restants) > 0:
+            for i, c in enumerate(restants):
+                suivants = restants[:i] + restants[i+1:]
+                for op in ['+', '-', '*', '/']:
+                    pile.empiler((expr + [c, op], suivants))
+                    
+    return nb_noeuds, meilleure_expression
 
+
+def parcours_DFS_recursif(choisis, restants, cible):
+
+    nb_noeuds = [0]
+    meilleure_solution = [None]
+
+    def explorer(expr, restants_locaux):
+        nb_noeuds[0] += 1
+        valide, resultat = eval_NPI_liste(expr)
+        
+        if not valide:
+            return False
+            
+        if resultat == cible:
+            meilleure_solution[0] = expr
+            print(f"Solution trouvée (DFS récursif) : {' '.join(str(x) for x in expr)} = {resultat}")
+            return True
+            
+        if len(restants_locaux) == 0:
+            return False
+            
+        for i, c in enumerate(restants_locaux):
+            suivants = restants_locaux[:i] + restants_locaux[i+1:]
+            for op in ['+', '-', '*', '/']:
+                if explorer(expr + [c, op], suivants):
+                    return True
+        return False
+
+    explorer(choisis, restants)
+    return nb_noeuds[0], meilleure_solution[0]
+
+
+def parcours_BFS(cartons, cible):
+    "-BFS-"
+    file = File()
+    nb_noeuds = 0
+    meilleure_expression = None
+    
+    for i, c in enumerate(cartons):
+        restants = cartons[:i] + cartons[i+1:]
+        file.enfiler(([c], restants))
+        
+    while not file.est_vide():
+        expr, restants = file.defiler()
+        nb_noeuds += 1
+        
+        valide, resultat = eval_NPI_liste(expr)
+        
+        if not valide:
+            continue
+            
+        if resultat == cible:
+            meilleure_expression = expr
+            print(f"Solution trouvée (BFS) : {' '.join(str(x) for x in expr)} = {resultat}")
+            break
+            
+        if len(restants) > 0:
+            for i, c in enumerate(restants):
+                suivants = restants[:i] + restants[i+1:]
+                for op in ['+', '-', '*', '/']:
+                    file.enfiler((expr + [c, op], suivants))
+                    
+    return nb_noeuds, meilleure_expression
 
     
